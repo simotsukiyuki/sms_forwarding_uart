@@ -9,7 +9,6 @@ local buff = {}
 
 -- 引入必要的库文件(lua编写), 内部库不需要require
 sys = require("sys")
-require "sysplus" -- http库需要这个sysplus
 
 if wdt then
     --添加硬狗防止程序卡死，在支持的设备上启用这个功能
@@ -45,29 +44,21 @@ do
         8,--数据位
         1--停止位
     )
-    log.info("notify","init uart:"..result)
-
-    --[[
-    --禁用RNDIS，防止跑流量
-    --ril有问题
-    ril.request("AT+RNDISCALL=0,1")
-   
-    log.info("notify","rndis disabled")
-    ]]--
+    log.info("notify","Init UART:"..result)
 end
 
 
 --订阅短信消息
 sys.subscribe("SMS_INC",function(phone,data)
     --来新消息了
-    log.info("notify","got sms",phone,data)
+    --log.info("notify","sms received:",phone,data)
     table.insert(buff,{phone,data})
     sys.publish("SMS_ADD")--推个事件
 end)
 
 sys.taskInit(function()
     while true do
-        print("ww",collectgarbage("count"))
+        print("New Msg...",collectgarbage("count"))
         while #buff > 0 do--把消息读完
             collectgarbage("collect")--防止内存不足
             local sms = table.remove(buff,1)
@@ -75,10 +66,11 @@ sys.taskInit(function()
             local data = sms[2]
             --改动到这里（2023-7-27）
             log.info(sms[1],data)
-            uart.write(uartid,"{["..sms[1].."],["..data.."]}")
+            --输出为json，但替换json的正确格式，需要上位机进行后续处理
+            uart.write(uartid,'@$from$:$'..sms[1]..'$,$data$:$'..data..'$@')
         end
-        log.info("notify","wait for a new sms~")
-        print("zzz",collectgarbage("count"))
+        log.info("notify","Waiting for new sms~")
+        print("Sleep...",collectgarbage("count"))
         sys.waitUntil("SMS_ADD")
     end
 end)
