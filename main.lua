@@ -75,6 +75,25 @@ sys.taskInit(function()
     end
 end)
 
+uart.on(uartid, "receive", function(id, len)
+    local data = json.decode(uart.read(id, len))
+    if data then
+        if data.type and data.to and data.content then
+            if data.type=="sms" then
+                log.info("notify","Sending sms to "..data.to)
+                sms.send(data.to,data.content)            
+            else
+                log.info("warning","Not support!")
+            end
+        else
+        log.info("warning","Not sms!")
+        end
+    else
+        log.info("warning","Wrong json!")
+    end
+    
+end)
+
 
 -- 用户代码已结束---------------------------------------------
 -- 结尾总是这一句
